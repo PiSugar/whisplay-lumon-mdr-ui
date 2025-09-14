@@ -7,6 +7,10 @@ An UI project build for mini Lumon MDR machine, build on Raspberry Pi zero 2w, P
 ## How To Use
 
 * Install Whisplay Driver, please refer to https://github.com/PiSugar/whisplay
+* Download or clone this repo
+```shell
+git clone https://github.com/PiSugar/whisplay-lumon-mdr-ui.git
+```
 * Install python dependencies
 ```shell
 pip install -r requirements.txt --break-system-packages
@@ -15,4 +19,7 @@ pip install -r requirements.txt --break-system-packages
 ```shell
 python lumon-ui.py
 ```
-* Enjoy the Fun!
+* (Optional) Add to autostart
+```
+sudo bash startup.sh
+```
