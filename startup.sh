@@ -20,6 +20,9 @@ ExecStart=$PYTHON_INTERPRETER $PYTHON_SCRIPT
 WorkingDirectory=$DIR
 Restart=always
 User=$(whoami)
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=10
 [Install]
 WantedBy=multi-user.target" | sudo tee $SERVICE_FILE
 # Reload systemd daemon

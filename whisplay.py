@@ -247,12 +247,12 @@ class WhisplayBoard:
 
     def _button_event(self, channel):
         if GPIO.input(channel):
-            # Falling edge (按钮按下)
-            self._button_press_event(channel)
+            # Rising edge (button released)
+            self._button_release_event(channel)
 
         else:
-            # Rising edge (按钮释放)
-            self._button_release_event(channel)
+            # Falling edge (button pressed)
+            self._button_press_event(channel)
 
     # ========== 清理 ==========
     def cleanup(self):
