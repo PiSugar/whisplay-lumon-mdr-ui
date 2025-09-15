@@ -8,6 +8,7 @@ import threading
 import random
 import pygame
 import signal
+import math
 from whisplay import WhisplayBoard
 from utils import ColorUtils, ImageUtils, TextUtils
 
@@ -108,6 +109,73 @@ class NumberMatrixItem:
         
         item_image_cache[cache_key] = img
         return img
+    
+class BoxOpenItem:
+    def __init__(self, top_left, top_right):
+        self.open = True
+        self.top_left = top_left
+        self.top_right = top_right
+        self.angle = 0  # Current angle for rotation
+        self.rotation_speed = 20  # Degrees per frame
+        self.frame = 0
+        self.frame_limit = 30  # Total frames for one open/close cycle
+
+    def update(self):
+        if self.open:
+            if self.frame < 10:
+                if self.angle < 90:
+                    self.angle += self.rotation_speed
+                else:
+                    self.angle = 90
+            elif self.frame >= 20:
+                if self.angle > 0:
+                    self.angle -= self.rotation_speed
+                else:
+                    self.angle = 0
+        else:
+            self.angle = 0
+        
+    def get_rotated_lines(self):
+        length = (self.top_right[0] - self.top_left[0]) * 0.5
+        left_line_angle = math.radians(self.angle)
+        right_line_angle = math.radians(self.angle * -1)
+        left_anchor = (self.top_left[0], self.top_left[1])
+        right_anchor = (self.top_right[0], self.top_right[1])
+        cos_angle = math.cos(left_line_angle)
+        sin_angle = math.sin(left_line_angle)
+        left_x = left_anchor[0] + length * cos_angle
+        left_y = left_anchor[1] - length * sin_angle
+        cos_angle = math.cos(right_line_angle)
+        sin_angle = math.sin(right_line_angle)
+        right_x = right_anchor[0] - length * cos_angle
+        right_y = right_anchor[1] + length * sin_angle
+        return (self.top_left, (int(left_x), int(left_y))), (self.top_right, (int(right_x), int(right_y)))
+    
+    def tick(self, show_now=False):
+        if show_now:
+            self.open = True
+            self.angle = 0
+            self.frame = 0
+        if self.open:
+            if self.frame <= self.frame_limit:
+                self.update()
+                self.frame += 1
+            else:
+                self.angle = 0
+        else:
+            if self.frame > 0:
+                self.angle = max(0, self.angle - self.rotation_speed)
+                self.frame -= 1
+    
+    def set_show(self, show):
+        self.show = show
+        
+    def render(self, draw):
+        if self.angle == 0:
+            return
+        left_line, right_line = self.get_rotated_lines()
+        draw.line(left_line, fill=(170, 250, 255, 255), width=2)
+        draw.line(right_line, fill=(170, 250, 255, 255), width=2)
 
 class RenderThread(threading.Thread):
     def __init__(self, whisplay, font_path, fps=30):
@@ -134,6 +202,7 @@ class RenderThread(threading.Thread):
         self.current_render_text = ""
         self.frame_count = 0
         self.collecting = False
+        self.collect_destination_index = 0
         self.collect_destination = (50, 380)  # Default collection position
         self.idle_countdown = 100
         self.show_time = True
@@ -154,7 +223,8 @@ class RenderThread(threading.Thread):
         self.collecting = collecting
         print(f"[Collect] Set collecting to {collecting}")
         if collecting:
-            collect_x = random.choice([50, 150, 260, 370, 480])
+            self.collect_destination_index = random.randint(0, 4)
+            collect_x = [50, 150, 260, 370, 480][self.collect_destination_index]
             self.collect_destination = (collect_x, 380)
             
     def play_start_sound(self):
@@ -207,10 +277,13 @@ class RenderThread(threading.Thread):
         draw = ImageDraw.Draw(self.canvas)
 
         temp_collecting = self.collecting
+        temp_collect_destination_index = self.collect_destination_index
         if self.collecting:
             self.collecting = False
         self.render_number_matrix(self.canvas, (24, 106), 12, 6, 40, 40, 4, (170, 250, 255, 255), temp_collecting)
-        
+
+        self.render_box_open(draw, temp_collecting, temp_collect_destination_index)
+
         if self.show_time:
             current_time_str = time.strftime("%H:%M:%S")
             if current_time_str != self.last_time_str:
@@ -237,6 +310,11 @@ class RenderThread(threading.Thread):
         self.final_image.paste(resized, (0, 0), resized)
         
         self.whisplay.draw_image(0, 0, self.whisplay.LCD_WIDTH, self.whisplay.LCD_HEIGHT, ImageUtils.image_to_rgb565(self.final_image, self.whisplay.LCD_WIDTH, self.whisplay.LCD_HEIGHT))
+        
+    def render_box_open(self, draw, collecting, destination_index):
+        for i, box in enumerate(box_items):
+            box.tick(collecting and i == destination_index)
+            box.render(draw)
 
     def render_number_matrix(self, image, position, column_count, line_count, item_width, item_height, spacing, font_color, global_collect=False):
         global collect_frame_limit
@@ -300,6 +378,15 @@ click_sound_effect.set_volume(0.1)
 
 # Button hold to restart render process
 restart_hold_seconds = 5
+
+box_tops = [
+    [(20, 400), (103, 400)],
+    [(130, 400), (212, 400)],
+    [(238, 403), (320, 403)],
+    [(348, 400), (430, 400)],
+    [(457, 400), (540, 400)],
+]
+box_items = [BoxOpenItem(top_left, top_right) for top_left, top_right in box_tops]
 
 def play_click_sound():
     if not pygame.mixer.music.get_busy():
@@ -374,7 +461,11 @@ if __name__ == "__main__":
         print("Button pressed status:", whisplay.button_pressed())
         if time.time() - button_press_time < restart_hold_seconds:
             render_thread.set_collecting(True)
+            # 一秒后更新focus位置
+            # random_focus_location()
             play_click_sound()
+            time.sleep(1)
+            random_focus_location()
     
     whisplay.on_button_press(button_press_handler)
     whisplay.on_button_release(button_release_handler)
@@ -395,6 +486,3 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         cleanup_and_exit(None, None)
-
-
-
