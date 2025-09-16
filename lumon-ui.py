@@ -434,8 +434,7 @@ if __name__ == "__main__":
             # button press status
             print("Button pressed status:", whisplay.button_pressed())
             # If button is released, whisplay.button_pressed() will be False
-            # TODO button_pressed reverse logic
-            if whisplay.button_pressed():
+            if not whisplay.button_pressed():
                 return # Exit if button is released early
             time.sleep(0.1)
         

@@ -229,7 +229,7 @@ class WhisplayBoard:
             time.sleep(delay_ms / 1000.0)
 
     def button_pressed(self):
-        return GPIO.input(self.BUTTON_PIN) == 0
+        return GPIO.input(self.BUTTON_PIN) == 1
 
     def on_button_press(self, callback):
         self.button_press_callback = callback
