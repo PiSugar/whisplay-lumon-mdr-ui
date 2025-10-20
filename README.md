@@ -23,3 +23,6 @@ python lumon-ui.py
 ```
 sudo bash startup.sh
 ```
+
+## 3D Print Enclosure
+https://github.com/PiSugar/suit-cases/tree/main/pisugar3-whisplay-lumon-mdr
