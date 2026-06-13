@@ -10,7 +10,7 @@ import pygame
 import signal
 import math
 import re
-from whisplay import WhisplayBoard
+from whisplay_client import create_whisplay_hardware
 from utils import ColorUtils, ImageUtils, TextUtils
 
 WHISPLAY_AUDIO_CARDS = (
@@ -482,7 +482,17 @@ def random_focus_location():
     print(f"[Focus] is_focused: {is_focused}, location: {focus_location}")
     
 if __name__ == "__main__":
-    whisplay = WhisplayBoard()
+    shutdown_requested = False
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    whisplay = create_whisplay_hardware(
+        app_id=os.getenv("WHISPLAY_APP_ID", "whisplay-lumon-mdr-ui"),
+        display_name="Lumon MDR",
+        icon="L",
+        launch_command="python3 lumon-ui.py",
+        launch_cwd=script_dir,
+        exit_gesture="long_press",
+        use_daemon_default_log=True,
+    )
     
     print(f"[LCD] initial finish: {whisplay.LCD_WIDTH}x{whisplay.LCD_HEIGHT}")
     
@@ -556,10 +566,20 @@ if __name__ == "__main__":
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, cleanup_and_exit)
+
+    def request_shutdown(_payload=None):
+        global shutdown_requested
+        shutdown_requested = True
+
+    if hasattr(whisplay, "on_exit_request"):
+        whisplay.on_exit_request(request_shutdown)
+    if hasattr(whisplay, "on_focus_revoked"):
+        whisplay.on_focus_revoked(request_shutdown)
     
     try:
         # Keep the main thread alive
-        while True:
+        while not shutdown_requested:
             time.sleep(1)
+        cleanup_and_exit(None, None)
     except KeyboardInterrupt:
         cleanup_and_exit(None, None)

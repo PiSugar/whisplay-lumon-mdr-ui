@@ -19,6 +19,7 @@ pip install -r requirements.txt --break-system-packages
 ```shell
 python lumon-ui.py
 ```
+If `whisplay-daemon` is running, the UI registers as the `whisplay-lumon-mdr-ui` app and uses daemon-managed display, button, backlight, and LED access. If the daemon is not available, it falls back to direct hardware access.
 * (Optional) Add to autostart
 ```
 sudo bash startup.sh
