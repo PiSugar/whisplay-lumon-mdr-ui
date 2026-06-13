@@ -115,6 +115,16 @@ def load_font(font_path, size):
     return ImageFont.load_default()
 
 
+def draw_centered_text(draw, box, text, font, fill):
+    left, top, right, bottom = box
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    x = left + ((right - left - text_width) / 2) - bbox[0]
+    y = top + ((bottom - top - text_height) / 2) - bbox[1]
+    draw.text((int(x), int(y)), text, font=font, fill=fill)
+
+
 class NumberMatrixItem:
     def __init__(self, size, font_path, row_index=0, column_index=0):
         self.item_width = 40
@@ -399,8 +409,20 @@ class RenderThread(threading.Thread):
                 
                 # Draw a black pop-up box with a blue stroke
                 clock_draw.rectangle((0, 0, clock_area_width-1, clock_area_height-1), fill=(0, 0, 0, 200), outline=(170, 250, 255, 255), width=2)
-                clock_draw.text((40, 10), "History lives in us.", font=self.title_font, fill=(170, 250, 255, 255))
-                clock_draw.text((60, 50), current_time_str, font=self.clock_font, fill=(170, 250, 255, 255))
+                draw_centered_text(
+                    clock_draw,
+                    (0, 12, clock_area_width, 48),
+                    "History lives in us.",
+                    self.title_font,
+                    (170, 250, 255, 255),
+                )
+                draw_centered_text(
+                    clock_draw,
+                    (0, 52, clock_area_width, 132),
+                    current_time_str,
+                    self.clock_font,
+                    (170, 250, 255, 255),
+                )
 
             if self.clock_image:
                 self.canvas.paste(self.clock_image, (100, 170), self.clock_image)
