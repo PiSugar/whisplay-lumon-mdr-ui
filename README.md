@@ -6,7 +6,7 @@ An UI project build for mini Lumon MDR machine, build on Raspberry Pi zero 2w, P
 
 ## How To Use
 
-* Install Whisplay Driver, please refer to https://github.com/PiSugar/whisplay
+* Install the Whisplay sound card driver. The UI auto-detects the unified `whisplaysound` card and remains compatible with legacy Whisplay card names.
 * Download or clone this repo
 ```shell
 git clone https://github.com/PiSugar/whisplay-lumon-mdr-ui.git

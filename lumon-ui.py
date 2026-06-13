@@ -9,8 +9,86 @@ import random
 import pygame
 import signal
 import math
+import re
 from whisplay import WhisplayBoard
 from utils import ColorUtils, ImageUtils, TextUtils
+
+WHISPLAY_AUDIO_CARDS = (
+    "whisplaysound",
+    "wm8960soundcard",
+    "es8389soundcard",
+)
+WHISPLAY_AUDIO_DEVICE_KEYWORDS = (
+    "whisplay",
+    "wm8960",
+    "es8389",
+)
+
+
+def detect_whisplay_audio_card():
+    try:
+        with open("/proc/asound/cards", "r", encoding="utf-8", errors="ignore") as handle:
+            fallback = ""
+            for line in handle:
+                match = re.match(r"\s*\d+\s+\[([^\]]+)\]", line)
+                if not match:
+                    continue
+                card_name = match.group(1).strip()
+                lower = line.lower()
+                if card_name == "whisplaysound":
+                    return card_name
+                if not fallback and any(name in lower for name in WHISPLAY_AUDIO_CARDS[1:]):
+                    fallback = card_name
+            return fallback
+    except OSError:
+        return ""
+
+
+def find_whisplay_sdl_audio_device():
+    try:
+        from pygame._sdl2 import audio
+    except (ImportError, pygame.error):
+        return ""
+
+    try:
+        pygame.init()
+        for device_name in audio.get_audio_device_names(False):
+            if any(keyword in device_name.lower() for keyword in WHISPLAY_AUDIO_DEVICE_KEYWORDS):
+                return device_name
+    except Exception:
+        return ""
+    finally:
+        if pygame.mixer.get_init():
+            pygame.mixer.quit()
+    return ""
+
+
+def init_audio_mixer():
+    card_name = detect_whisplay_audio_card()
+    if not card_name:
+        pygame.mixer.init()
+        print("[Audio] Using default pygame audio device")
+        return ""
+
+    os.environ.setdefault("SDL_AUDIODRIVER", "alsa")
+    os.environ.setdefault("ALSA_CARD", card_name)
+    audio_device = find_whisplay_sdl_audio_device()
+    fallback_device = f"plughw:CARD={card_name},DEV=0"
+    os.environ.setdefault("AUDIODEV", fallback_device)
+
+    try:
+        if audio_device:
+            pygame.mixer.init(devicename=audio_device)
+            print(f"[Audio] Using {audio_device}")
+        else:
+            pygame.mixer.init(devicename=fallback_device)
+            print(f"[Audio] Using {fallback_device}")
+    except (pygame.error, TypeError) as exc:
+        selected_device = audio_device or fallback_device
+        print(f"[Audio] Could not open {selected_device}: {exc}. Falling back to default audio device.")
+        pygame.mixer.init()
+    return card_name
+
 
 class NumberMatrixItem:
     def __init__(self, size, font_path, row_index=0, column_index=0):
@@ -355,7 +433,7 @@ class RenderThread(threading.Thread):
     def stop(self):
         self.running = False
         
-pygame.mixer.init()
+audio_card_name = init_audio_mixer()
 number_image_cache = {}
 item_image_cache = {}
     
