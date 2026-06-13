@@ -23,6 +23,14 @@ WHISPLAY_AUDIO_DEVICE_KEYWORDS = (
     "wm8960",
     "es8389",
 )
+FONT_FALLBACK_PATHS = (
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+)
 
 
 def detect_whisplay_audio_card():
@@ -90,6 +98,23 @@ def init_audio_mixer():
     return card_name
 
 
+def load_font(font_path, size):
+    candidates = []
+    if font_path:
+        candidates.append(font_path)
+        candidates.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), font_path))
+    candidates.extend(FONT_FALLBACK_PATHS)
+
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate):
+            try:
+                return ImageFont.truetype(candidate, size)
+            except OSError:
+                pass
+    print(f"[Font] Could not load {font_path}; using PIL default font")
+    return ImageFont.load_default()
+
+
 class NumberMatrixItem:
     def __init__(self, size, font_path, row_index=0, column_index=0):
         self.item_width = 40
@@ -97,7 +122,7 @@ class NumberMatrixItem:
         # Random number from 0-9
         self.number = random.randint(0, 9)
         self.font_path = font_path
-        self.font = ImageFont.truetype(self.font_path, 20)
+        self.font = load_font(self.font_path, 20)
         self.shaking_offset = (0, 0)
         self.is_shaking = True
         self.scale = 0.7  # Initial scale is 1.0
@@ -274,7 +299,7 @@ class RenderThread(threading.Thread):
         # Clear the logo and start the loop with running = True
         self.whisplay.set_rgb_fade(0, 0, 0, duration_ms=1000)
         self.running = True
-        self.main_text_font = ImageFont.truetype(self.font_path, 20)
+        self.main_text_font = load_font(self.font_path, 20)
         self.main_text_line_height = self.main_text_font.getmetrics()[0] + self.main_text_font.getmetrics()[1]
         self.text_cache_image = None
         self.current_render_text = ""
@@ -292,8 +317,8 @@ class RenderThread(threading.Thread):
         # Optimization: Cache for clock
         self.last_time_str = ""
         self.clock_image = None
-        self.clock_font = ImageFont.truetype(self.font_path, 60)
-        self.title_font = ImageFont.truetype(self.font_path, 32)
+        self.clock_font = load_font(self.font_path, 60)
+        self.title_font = load_font(self.font_path, 32)
 
     def set_collecting(self, collecting):
         self.idle_countdown = 100
